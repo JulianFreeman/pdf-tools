@@ -167,8 +167,8 @@ const handleConvert = async () => {
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel
                   }}</label>
                 <div class="relative">
-                  <input type="number" v-model.number="customWidthPx" min="0" step="5"
-                    class="w-28 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow" />
+                  <input type="number" v-model.number="customWidthPx" min="0" step="1"
+                    class="w-24 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow dark:[color-scheme:dark]" />
                   <span
                     class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">px</span>
                 </div>
@@ -177,8 +177,8 @@ const handleConvert = async () => {
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel
                   }}</label>
                 <div class="relative">
-                  <input type="number" v-model.number="customHeightPx" min="0" step="5"
-                    class="w-28 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow" />
+                  <input type="number" v-model.number="customHeightPx" min="0" step="1"
+                    class="w-24 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow dark:[color-scheme:dark]" />
                   <span
                     class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">px</span>
                 </div>

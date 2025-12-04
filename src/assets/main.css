@@ -15,3 +15,16 @@
 body {
   @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased;
 }
+
+/* Hide WebKit/Blink browsers' number input spin buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide Firefox browsers' number input spin buttons */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield; /* Standard property for other browsers or future standards */
+}
