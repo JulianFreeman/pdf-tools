@@ -24,4 +24,10 @@ export interface SplitPayload {
 
 export interface ImagesToPdfPayload {
   imageBuffers: ArrayBuffer[];
+  // page sizing mode: 'original' = each page uses the original image size,
+  // 'max' = use the maximum width/height among all images for every page,
+  // 'custom' = use provided customWidthMm/customHeightMm for all pages (in millimeters)
+  mode?: 'original' | 'max' | 'custom';
+  customWidthMm?: number;
+  customHeightMm?: number;
 }

@@ -145,7 +145,7 @@ const handleSplit = async () => {
       // but pdfDoc.destroy() is good practice if available (pdf.js v2+ usually has it).
       if (pdfDoc.destroy) pdfDoc.destroy();
 
-      resultPdf = await imagesToPdf(imageBuffers);
+      resultPdf = await imagesToPdf(imageBuffers, { mode: 'original' });
 
     } else {
       // STANDARD MODE: Binary copy

@@ -14,8 +14,9 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
       case 'SPLIT_PDF':
         resultBytes = await splitPdf((payload as SplitPayload).pdfBuffer, (payload as SplitPayload).pageIndices);
         break;
-      case 'IMAGES_TO_PDF':
-        resultBytes = await imagesToPdf((payload as ImagesToPdfPayload).imageBuffers);
+        case 'IMAGES_TO_PDF':
+          // payload may include sizing options
+          resultBytes = await imagesToPdf((payload as ImagesToPdfPayload).imageBuffers, payload as ImagesToPdfPayload);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -92,35 +93,66 @@ async function splitPdf(pdfBuffer: ArrayBuffer, pageIndices: number[]): Promise<
   return await newPdf.save();
 }
 
-async function imagesToPdf(imageBuffers: ArrayBuffer[]): Promise<Uint8Array> {
+async function imagesToPdf(imageBuffers: ArrayBuffer[], options?: ImagesToPdfPayload): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
 
+  // Helper: convert mm to PDF points
+  const mmToPt = (mm: number) => (mm * 72) / 25.4;
+
+  // First, embed all images and collect their intrinsic sizes
+  const embedded: { image: any; width: number; height: number }[] = [];
   for (const buffer of imageBuffers) {
-    let image;
     const header = new Uint8Array(buffer.slice(0, 4));
     const isPng = header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47;
-    
+    let image;
     if (isPng) {
       image = await pdf.embedPng(buffer);
     } else {
       image = await pdf.embedJpg(buffer);
     }
+    const size = image.scale(1);
+    embedded.push({ image, width: size.width, height: size.height });
+  }
 
+  // Determine page size according to options
+  let targetWidth: number | null = null;
+  let targetHeight: number | null = null;
+
+  const mode = options?.mode || 'original';
+  if (mode === 'max') {
+    // choose max width and max height among images
+    targetWidth = Math.max(...embedded.map(e => e.width));
+    targetHeight = Math.max(...embedded.map(e => e.height));
+  } else if (mode === 'custom' && typeof options?.customWidthMm === 'number' && typeof options?.customHeightMm === 'number') {
+    targetWidth = mmToPt(options.customWidthMm);
+    targetHeight = mmToPt(options.customHeightMm);
+  }
+
+  for (const e of embedded) {
     const page = pdf.addPage();
-    const { width, height } = image.scale(1);
-    
-    const A4_WIDTH = 595.28;
-    const A4_HEIGHT = 841.89;
 
-    page.setSize(A4_WIDTH, A4_HEIGHT);
-    
-    const scale = Math.min(A4_WIDTH / width, A4_HEIGHT / height);
-    const drawWidth = width * scale;
-    const drawHeight = height * scale;
-    
-    page.drawImage(image, {
-      x: (A4_WIDTH - drawWidth) / 2,
-      y: (A4_HEIGHT - drawHeight) / 2,
+    let pageWidth = e.width;
+    let pageHeight = e.height;
+
+    if (mode === 'original') {
+      // keep per-image size
+      pageWidth = e.width;
+      pageHeight = e.height;
+    } else if (mode === 'max' || mode === 'custom') {
+      pageWidth = targetWidth || e.width;
+      pageHeight = targetHeight || e.height;
+    }
+
+    page.setSize(pageWidth, pageHeight);
+
+    // Fit image into page while preserving aspect ratio
+    const scale = Math.min(pageWidth / e.width, pageHeight / e.height);
+    const drawWidth = e.width * scale;
+    const drawHeight = e.height * scale;
+
+    page.drawImage(e.image, {
+      x: (pageWidth - drawWidth) / 2,
+      y: (pageHeight - drawHeight) / 2,
       width: drawWidth,
       height: drawHeight,
     });

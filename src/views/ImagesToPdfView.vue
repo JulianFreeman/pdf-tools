@@ -20,6 +20,10 @@ const { imagesToPdf } = usePdfWorker();
 
 const images = ref<ImageFile[]>([]);
 const isProcessing = ref(false);
+// Page sizing options
+const sizeMode = ref<'original' | 'max' | 'custom'>('original');
+const customWidthMm = ref<number>(210); // default A4 width
+const customHeightMm = ref<number>(297); // default A4 height
 
 const handleFilesSelected = (selectedFiles: File[]) => {
   for (const file of selectedFiles) {
@@ -59,8 +63,15 @@ const handleConvert = async () => {
       buffers.push(buffer);
     }
 
+    // Build options
+    const options: any = { mode: sizeMode.value };
+    if (sizeMode.value === 'custom') {
+      options.customWidthMm = customWidthMm.value;
+      options.customHeightMm = customHeightMm.value;
+    }
+
     // Call worker
-    const resultPdf = await imagesToPdf(buffers);
+    const resultPdf = await imagesToPdf(buffers, options);
 
     // Download
     const blob = new Blob([resultPdf as any], { type: 'application/pdf' });
@@ -97,6 +108,38 @@ const handleConvert = async () => {
       :description="t.imagesToPdf.uploadDescription"
       @files-selected="handleFilesSelected"
     />
+
+    <!-- Page size options -->
+    <div class="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t.imagesToPdf.sizeModeLabel }}</div>
+      </div>
+
+      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-4">
+        <label class="flex items-center gap-2">
+          <input type="radio" v-model="sizeMode" value="original" class="form-radio" />
+          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeOriginal }}</span>
+        </label>
+
+        <label class="flex items-center gap-2">
+          <input type="radio" v-model="sizeMode" value="max" class="form-radio" />
+          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeMax }}</span>
+        </label>
+
+        <label class="flex items-center gap-2">
+          <input type="radio" v-model="sizeMode" value="custom" class="form-radio" />
+          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeCustom }}</span>
+        </label>
+
+        <div v-if="sizeMode === 'custom'" class="mt-3 sm:mt-0 flex items-center gap-2">
+          <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
+          <input type="number" v-model.number="customWidthMm" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+          <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
+          <input type="number" v-model.number="customHeightMm" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+          <span class="text-xs text-gray-500 dark:text-gray-400">mm</span>
+        </div>
+      </div>
+    </div>
 
     <div v-if="images.length > 0" class="space-y-4">
       <div class="flex justify-between items-center">
