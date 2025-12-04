@@ -70,33 +70,35 @@ const handlePageClick = (index: number, event: MouseEvent) => {
   // Prevent default browser selection behavior (blue overlay)
   event.preventDefault(); 
   
-  // Shift + Click Range Selection
+  const currentPage = pages.value.find(p => p.index === index);
+  if (!currentPage) return;
+
+  // Determine the selection state of the *clicked* item *before* this interaction
+  // This state will define the target state for the range selection
+  const initialClickedPageState = currentPage.selected;
+
   if (event.shiftKey && lastSelectedIndex.value !== null) {
     const start = Math.min(lastSelectedIndex.value, index);
     const end = Math.max(lastSelectedIndex.value, index);
     
-    // Determine target state based on the clicked item's new state (usually select all in range)
-    // Standard behavior: Shift-click selects the range.
+    // The target state for the range is the inverse of the initial state of the *clicked* page.
+    // If the clicked page was initially selected, we want to DESELECT the range.
+    // If the clicked page was initially not selected, we want to SELECT the range.
+    const targetSelectedState = !initialClickedPageState;
+
     for (let i = start; i <= end; i++) {
       const page = pages.value.find(p => p.index === i);
       if (page) {
-        page.selected = true; 
+        page.selected = targetSelectedState; 
       }
     }
+    // Update last selected only on normal click or start of range
+    lastSelectedIndex.value = index; 
+
   } else {
     // Normal Toggle
-    const page = pages.value.find(p => p.index === index);
-    if (page) {
-      page.selected = !page.selected;
-      // Update last selected only on normal click or start of range
-      if (page.selected) {
-        lastSelectedIndex.value = index;
-      } else {
-         // If deselecting, strictly speaking we might want to clear lastSelectedIndex or keep it.
-         // Standard OS behavior varies. Keeping it allows re-selecting from this point.
-         lastSelectedIndex.value = index;
-      }
-    }
+    currentPage.selected = !initialClickedPageState; // Toggle its state
+    lastSelectedIndex.value = index; // Always update lastSelectedIndex to the last clicked page
   }
 };
 
