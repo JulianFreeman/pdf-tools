@@ -21,6 +21,7 @@ const currentFile = ref<File | null>(null);
 const pages = ref<PdfPage[]>([]);
 const isProcessing = ref(false);
 const useSafeMode = ref(false); // New: Safe Mode Toggle
+const lastSelectedIndex = ref<number | null>(null);
 
 const handleFileSelected = async (files: File[]) => {
   if (files.length === 0) return;
@@ -35,6 +36,7 @@ const handleFileSelected = async (files: File[]) => {
   store.setLoading(true);
   currentFile.value = file;
   pages.value = []; // Clear previous
+  lastSelectedIndex.value = null;
 
   try {
     const buffer = await file.arrayBuffer();
@@ -64,10 +66,37 @@ const handleFileSelected = async (files: File[]) => {
   }
 };
 
-const togglePage = (index: number) => {
-  const page = pages.value.find(p => p.index === index);
-  if (page) {
-    page.selected = !page.selected;
+const handlePageClick = (index: number, event: MouseEvent) => {
+  // Prevent default browser selection behavior (blue overlay)
+  event.preventDefault(); 
+  
+  // Shift + Click Range Selection
+  if (event.shiftKey && lastSelectedIndex.value !== null) {
+    const start = Math.min(lastSelectedIndex.value, index);
+    const end = Math.max(lastSelectedIndex.value, index);
+    
+    // Determine target state based on the clicked item's new state (usually select all in range)
+    // Standard behavior: Shift-click selects the range.
+    for (let i = start; i <= end; i++) {
+      const page = pages.value.find(p => p.index === i);
+      if (page) {
+        page.selected = true; 
+      }
+    }
+  } else {
+    // Normal Toggle
+    const page = pages.value.find(p => p.index === index);
+    if (page) {
+      page.selected = !page.selected;
+      // Update last selected only on normal click or start of range
+      if (page.selected) {
+        lastSelectedIndex.value = index;
+      } else {
+         // If deselecting, strictly speaking we might want to clear lastSelectedIndex or keep it.
+         // Standard OS behavior varies. Keeping it allows re-selecting from this point.
+         lastSelectedIndex.value = index;
+      }
+    }
   }
 };
 
@@ -200,8 +229,9 @@ const reset = () => {
         <div 
           v-for="page in pages" 
           :key="page.index"
-          @click="togglePage(page.index)"
-          class="relative group cursor-pointer"
+          @click="handlePageClick(page.index, $event)"
+          @mousedown.prevent
+          class="relative group cursor-pointer select-none"
         >
           <div 
             class="relative rounded-lg overflow-hidden border-2 transition-all duration-200 shadow-sm aspect-[1/1.414]"
