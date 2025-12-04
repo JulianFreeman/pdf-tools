@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { Image as ImageIcon, X, Download } from 'lucide-vue-next';
 import FileUploader from '@/components/FileUploader.vue';
+import BaseSelect from '@/components/BaseSelect.vue';
 import { usePdfWorker } from '@/composables/usePdfWorker';
 import { useAppStore } from '@/stores/app';
 import { messages } from '@/i18n';
@@ -48,6 +49,12 @@ const applyPreset = (p: string) => {
     // none
     preset.value = 'none';
   }
+};
+
+const handlePresetChange = (val: string | number) => {
+  const p = val as 'none' | 'A4' | 'A3' | 'Letter';
+  preset.value = p;
+  applyPreset(p);
 };
 
 const handleFilesSelected = (selectedFiles: File[]) => {
@@ -103,7 +110,7 @@ const handleConvert = async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `images_converted_${new Date().toISOString().slice(0,10)}.pdf`;
+    link.download = `images_converted_${new Date().toISOString().slice(0, 10)}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -126,136 +133,95 @@ const handleConvert = async () => {
       <p class="text-gray-500 dark:text-gray-400 mt-2">{{ t.imagesToPdf.description }}</p>
     </div>
 
-    <FileUploader 
-      accept="image/*" 
-      :multiple="true"
-      :label="t.imagesToPdf.uploadLabel"
-      :description="t.imagesToPdf.uploadDescription"
-      @files-selected="handleFilesSelected"
-    />
+    <FileUploader accept="image/*" :multiple="true" :label="t.imagesToPdf.uploadLabel"
+      :description="t.imagesToPdf.uploadDescription" @files-selected="handleFilesSelected" />
 
     <!-- Page size options -->
     <div class="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
       <div class="flex flex-wrap items-center gap-4">
-        <div class="inline-flex rounded-md shadow-sm -space-x-px">
-          <button
-            type="button"
-            @click="sizeMode = 'original'"
-            :class="[
-              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
-              sizeMode === 'original'
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600',
-              'rounded-l-md'
-            ]"
-          >
-            {{ t.imagesToPdf.sizeOriginal }}
-          </button>
-          <button
-            type="button"
-            @click="sizeMode = 'max'"
-            :class="[
-              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
-              sizeMode === 'max'
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600'
-            ]"
-          >
-            {{ t.imagesToPdf.sizeMax }}
-          </button>
-          <button
-            type="button"
-            @click="sizeMode = 'custom'"
-            :class="[
-              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
-              sizeMode === 'custom'
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600',
-              'rounded-r-md'
-            ]"
-          >
-            {{ t.imagesToPdf.sizeCustom }}
-          </button>
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeModeLabel }}</label>
+          <BaseSelect :model-value="sizeMode"
+            @update:model-value="(val) => sizeMode = val as 'original' | 'max' | 'custom'" :options="[
+              { label: t.imagesToPdf.sizeOriginal, value: 'original' },
+              { label: t.imagesToPdf.sizeMax, value: 'max' },
+              { label: t.imagesToPdf.sizeCustom, value: 'custom' }
+            ]" />
         </div>
 
         <template v-if="sizeMode === 'custom'">
-          <div class="flex items-center gap-4">
-            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.sizePresetLabel }}</label>
-            <select v-model="preset" @change="applyPreset(preset)" 
-              class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
-                     focus:outline-none focus:ring-2 focus:ring-purple-500" >
-              <option value="none">{{ t.imagesToPdf.presetNone || 'None' }}</option>
-              <option value="A4">A4</option>
-              <option value="A3">A3</option>
-              <option value="Letter">Letter</option>
-            </select>
-          </div>
-
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
-              <input type="number" v-model.number="customWidthPx" min="1" 
-                class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
-                       focus:outline-none focus:ring-2 focus:ring-purple-500" />
-              <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+          <div class="flex flex-wrap items-center gap-6">
+            <div class="flex items-center gap-3">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizePresetLabel
+                }}</label>
+              <BaseSelect :model-value="preset" @update:model-value="handlePresetChange" :options="[
+                { label: t.imagesToPdf.presetNone || 'None', value: 'none' },
+                { label: 'A4', value: 'A4' },
+                { label: 'A3', value: 'A3' },
+                { label: 'Letter', value: 'Letter' }
+              ]" />
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
-              <input type="number" v-model.number="customHeightPx" min="1" 
-                class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
-                       focus:outline-none focus:ring-2 focus:ring-purple-500" />
-              <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+
+            <div class="flex items-center gap-4 border-l border-gray-200 dark:border-gray-700 pl-4">
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel
+                  }}</label>
+                <div class="relative">
+                  <input type="number" v-model.number="customWidthPx" min="0" step="5"
+                    class="w-28 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow" />
+                  <span
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">px</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel
+                  }}</label>
+                <div class="relative">
+                  <input type="number" v-model.number="customHeightPx" min="0" step="5"
+                    class="w-28 pl-3 pr-6 py-2.5 rounded-lg border-0 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm transition-shadow" />
+                  <span
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">px</span>
+                </div>
+              </div>
             </div>
           </div>
         </template>
       </div>
     </div>
-    
+
     <div v-if="images.length > 0" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.imagesToPdf.images }} ({{ images.length }})</h3>
-        <button 
-          @click="images = []" 
-          class="text-sm text-red-500 hover:text-red-600 dark:text-red-400"
-        >
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.imagesToPdf.images }} ({{ images.length
+          }})
+        </h3>
+        <button @click="images = []" class="text-sm text-red-500 hover:text-red-600 dark:text-red-400">
           {{ t.common.clearAll }}
         </button>
       </div>
 
-      <VueDraggable
-        v-model="images"
-        :animation="150"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
-        handle=".drag-handle"
-      >
-        <div 
-          v-for="(img, index) in images" 
-          :key="img.id"
-          class="relative group aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm"
-        >
-            <img :src="img.url" class="w-full h-full object-cover drag-handle cursor-move" />
-            
-            <div class="absolute inset-x-0 bottom-0 bg-black/60 text-white p-2 text-xs truncate">
-                {{ index + 1 }}. {{ img.name }}
-            </div>
+      <VueDraggable v-model="images" :animation="150" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"
+        handle=".drag-handle">
+        <div v-for="(img, index) in images" :key="img.id"
+          class="relative group aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
+          <img :src="img.url" class="w-full h-full object-cover drag-handle cursor-move" />
 
-            <button 
-                @click="removeImage(img.id)" 
-                class="absolute top-2 right-2 p-1.5 bg-white/90 text-gray-600 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-                <X class="w-4 h-4" />
-            </button>
+          <div class="absolute inset-x-0 bottom-0 bg-black/60 text-white p-2 text-xs truncate">
+            {{ index + 1 }}. {{ img.name }}
+          </div>
+
+          <button @click="removeImage(img.id)"
+            class="absolute top-2 right-2 p-1.5 bg-white/90 text-gray-600 hover:text-red-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            <X class="w-4 h-4" />
+          </button>
         </div>
       </VueDraggable>
 
       <div class="pt-6 flex justify-center">
-        <button
-          @click="handleConvert"
-          :disabled="images.length === 0 || isProcessing"
-          class="flex items-center gap-2 px-8 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white rounded-xl font-semibold shadow-lg shadow-purple-600/30 transition-all hover:scale-105 active:scale-95"
-        >
+        <button @click="handleConvert" :disabled="images.length === 0 || isProcessing"
+          class="flex items-center gap-2 px-8 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white rounded-xl font-semibold shadow-lg shadow-purple-600/30 transition-all hover:scale-105 active:scale-95">
           <Download v-if="!isProcessing" class="w-5 h-5" />
-          <span v-if="isProcessing" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
+          <span v-if="isProcessing"
+            class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
           {{ isProcessing ? t.imagesToPdf.processing : t.imagesToPdf.convertButton }}
         </button>
       </div>
