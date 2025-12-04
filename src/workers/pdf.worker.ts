@@ -96,8 +96,8 @@ async function splitPdf(pdfBuffer: ArrayBuffer, pageIndices: number[]): Promise<
 async function imagesToPdf(imageBuffers: ArrayBuffer[], options?: ImagesToPdfPayload): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
 
-  // Helper: convert mm to PDF points
-  const mmToPt = (mm: number) => (mm * 72) / 25.4;
+  // Helper: convert pixels to PDF points. Assume 96 DPI for pixel units: 1px = 72/96 pt
+  const pxToPt = (px: number) => (px * 72) / 96;
 
   // First, embed all images and collect their intrinsic sizes
   const embedded: { image: any; width: number; height: number }[] = [];
@@ -123,9 +123,10 @@ async function imagesToPdf(imageBuffers: ArrayBuffer[], options?: ImagesToPdfPay
     // choose max width and max height among images
     targetWidth = Math.max(...embedded.map(e => e.width));
     targetHeight = Math.max(...embedded.map(e => e.height));
-  } else if (mode === 'custom' && typeof options?.customWidthMm === 'number' && typeof options?.customHeightMm === 'number') {
-    targetWidth = mmToPt(options.customWidthMm);
-    targetHeight = mmToPt(options.customHeightMm);
+  } else if (mode === 'custom' && typeof options?.customWidthPx === 'number' && typeof options?.customHeightPx === 'number') {
+    // custom width/height are provided in pixels — convert to points
+    targetWidth = pxToPt(options.customWidthPx);
+    targetHeight = pxToPt(options.customHeightPx);
   }
 
   for (const e of embedded) {
@@ -135,10 +136,11 @@ async function imagesToPdf(imageBuffers: ArrayBuffer[], options?: ImagesToPdfPay
     let pageHeight = e.height;
 
     if (mode === 'original') {
-      // keep per-image size
+      // keep per-image size (image intrinsic sizes are in PDF points because image.scale(1) returned points)
       pageWidth = e.width;
       pageHeight = e.height;
     } else if (mode === 'max' || mode === 'custom') {
+      // targetWidth/Height (if set) are in PDF points; otherwise fallback to image size
       pageWidth = targetWidth || e.width;
       pageHeight = targetHeight || e.height;
     }

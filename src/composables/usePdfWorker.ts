@@ -54,7 +54,7 @@ export function usePdfWorker() {
 
   const mergePdfs = (pdfBuffers: ArrayBuffer[]) => postMessageToWorker('MERGE_PDFS', { pdfBuffers });
   const splitPdf = (pdfBuffer: ArrayBuffer, pageIndices: number[]) => postMessageToWorker('SPLIT_PDF', { pdfBuffer, pageIndices });
-  const imagesToPdf = (imageBuffers: ArrayBuffer[], options?: { mode?: 'original'|'max'|'custom', customWidthMm?: number, customHeightMm?: number }) => postMessageToWorker('IMAGES_TO_PDF', { imageBuffers, ...(options || {}) });
+  const imagesToPdf = (imageBuffers: ArrayBuffer[], options?: { mode?: 'original'|'max'|'custom', customWidthPx?: number, customHeightPx?: number }) => postMessageToWorker('IMAGES_TO_PDF', { imageBuffers, ...(options || {}) });
 
   const terminate = () => {
     worker.terminate();

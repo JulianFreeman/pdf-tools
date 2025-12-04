@@ -22,8 +22,33 @@ const images = ref<ImageFile[]>([]);
 const isProcessing = ref(false);
 // Page sizing options
 const sizeMode = ref<'original' | 'max' | 'custom'>('original');
-const customWidthMm = ref<number>(210); // default A4 width
-const customHeightMm = ref<number>(297); // default A4 height
+const customWidthPx = ref<number>(2480); // default ~A4 width at 96 DPI (approx)
+const customHeightPx = ref<number>(3508); // default ~A4 height at 96 DPI (approx)
+const preset = ref<'none' | 'A4' | 'A3' | 'Letter'>('none');
+
+// helpers for presets (convert mm -> px at 96 DPI)
+const mmToPx = (mm: number) => Math.round((mm * 96) / 25.4);
+const applyPreset = (p: string) => {
+  if (p === 'A4') {
+    customWidthPx.value = mmToPx(210);
+    customHeightPx.value = mmToPx(297);
+    sizeMode.value = 'custom';
+  } else if (p === 'A3') {
+    customWidthPx.value = mmToPx(297);
+    customHeightPx.value = mmToPx(420);
+    sizeMode.value = 'custom';
+  } else if (p === 'Letter') {
+    // Letter 8.5in x 11in -> mm
+    const wMm = 8.5 * 25.4;
+    const hMm = 11 * 25.4;
+    customWidthPx.value = mmToPx(wMm);
+    customHeightPx.value = mmToPx(hMm);
+    sizeMode.value = 'custom';
+  } else {
+    // none
+    preset.value = 'none';
+  }
+};
 
 const handleFilesSelected = (selectedFiles: File[]) => {
   for (const file of selectedFiles) {
@@ -66,8 +91,8 @@ const handleConvert = async () => {
     // Build options
     const options: any = { mode: sizeMode.value };
     if (sizeMode.value === 'custom') {
-      options.customWidthMm = customWidthMm.value;
-      options.customHeightMm = customHeightMm.value;
+      options.customWidthPx = customWidthPx.value;
+      options.customHeightPx = customHeightPx.value;
     }
 
     // Call worker
@@ -131,12 +156,24 @@ const handleConvert = async () => {
           <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeCustom }}</span>
         </label>
 
-        <div v-if="sizeMode === 'custom'" class="mt-3 sm:mt-0 flex items-center gap-2">
-          <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
-          <input type="number" v-model.number="customWidthMm" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-          <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
-          <input type="number" v-model.number="customHeightMm" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-          <span class="text-xs text-gray-500 dark:text-gray-400">mm</span>
+        <div v-if="sizeMode === 'custom'" class="mt-3 sm:mt-0 flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.sizePresetLabel }}</label>
+            <select v-model="preset" @change="applyPreset(preset)" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+              <option value="none">{{ t.imagesToPdf.presetNone || 'None' }}</option>
+              <option value="A4">A4</option>
+              <option value="A3">A3</option>
+              <option value="Letter">Letter</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
+            <input type="number" v-model.number="customWidthPx" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
+            <input type="number" v-model.number="customHeightPx" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+            <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+          </div>
         </div>
       </div>
     </div>
