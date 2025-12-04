@@ -44,8 +44,28 @@ async function mergePdfs(pdfBuffers: ArrayBuffer[]): Promise<Uint8Array> {
   const mergedPdf = await PDFDocument.create();
   
   for (const buffer of pdfBuffers) {
-    const pdf = await PDFDocument.load(buffer); 
-    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+    // Convert to Uint8Array for better compatibility
+    const uint8Buffer = new Uint8Array(buffer);
+    
+    // Load with error tolerance
+    let pdf;
+    try {
+       pdf = await PDFDocument.load(uint8Buffer, { ignoreEncryption: true });
+    } catch (e) {
+       // If load fails, sometimes it's a catastrophic failure we can't fix easily without more advanced tools.
+       // But often the warning is just a warning.
+       throw e; 
+    }
+
+    // "Scrub" the PDF to fix XRef tables and invalid objects if we detect potential issues.
+    // We do this by saving it once to normalize the structure.
+    // This is expensive but fixes many "blank page" issues on malformed PDFs.
+    // To optimize, we could try-catch the copyPages or check for warnings, but pdf-lib doesn't expose warnings easily.
+    // Let's do it blindly for robustness given the user report.
+    const scrubbedBytes = await pdf.save();
+    const scrubbedPdf = await PDFDocument.load(scrubbedBytes, { ignoreEncryption: true });
+
+    const copiedPages = await mergedPdf.copyPages(scrubbedPdf, scrubbedPdf.getPageIndices());
     copiedPages.forEach((page) => mergedPdf.addPage(page));
   }
 
@@ -53,10 +73,20 @@ async function mergePdfs(pdfBuffers: ArrayBuffer[]): Promise<Uint8Array> {
 }
 
 async function splitPdf(pdfBuffer: ArrayBuffer, pageIndices: number[]): Promise<Uint8Array> {
-  const srcPdf = await PDFDocument.load(pdfBuffer);
+  const uint8Buffer = new Uint8Array(pdfBuffer);
+  
+  // 1. Initial Load
+  const srcPdf = await PDFDocument.load(uint8Buffer, { ignoreEncryption: true });
+  
+  // 2. "Scrub" / Normalize the PDF. 
+  // This rebuilds the XRef table and fixes broken object references which cause blank pages.
+  const scrubbedBytes = await srcPdf.save();
+  const scrubbedSrcPdf = await PDFDocument.load(scrubbedBytes, { ignoreEncryption: true });
+
+  // 3. Create new doc and copy from the CLEAN source
   const newPdf = await PDFDocument.create();
   
-  const copiedPages = await newPdf.copyPages(srcPdf, pageIndices);
+  const copiedPages = await newPdf.copyPages(scrubbedSrcPdf, pageIndices);
   copiedPages.forEach((page) => newPdf.addPage(page));
 
   return await newPdf.save();

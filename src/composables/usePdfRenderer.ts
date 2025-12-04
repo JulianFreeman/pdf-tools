@@ -90,9 +90,44 @@ export function usePdfRenderer() {
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
+  const renderPageFromProxyToBuffer = async (
+    pdf: pdfjsLib.PDFDocumentProxy,
+    pageIndex: number,
+    scale: number = 2.0 // Higher scale for print quality
+  ): Promise<ArrayBuffer> => {
+    const page = await pdf.getPage(pageIndex + 1);
+    
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    if (!context) throw new Error('Canvas context missing');
+
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+      canvas: canvas
+    }).promise;
+
+    page.cleanup();
+    
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          blob.arrayBuffer().then(resolve).catch(reject);
+        } else {
+          reject(new Error('Canvas to Blob failed'));
+        }
+      }, 'image/png');
+    });
+  };
+
   return {
     renderPageToCanvas,
     getDocumentProxy,
-    renderPageFromProxy
+    renderPageFromProxy,
+    renderPageFromProxyToBuffer
   };
 }

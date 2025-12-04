@@ -13,13 +13,14 @@ interface PdfPage {
 }
 
 const store = useAppStore();
-const { getDocumentProxy, renderPageFromProxy } = usePdfRenderer();
-const { splitPdf } = usePdfWorker();
+const { getDocumentProxy, renderPageFromProxy, renderPageFromProxyToBuffer } = usePdfRenderer();
+const { splitPdf, imagesToPdf } = usePdfWorker();
 
 const currentFile = ref<File | null>(null);
-const currentBuffer = ref<ArrayBuffer | null>(null);
+// Removed persistent currentBuffer to avoid detached buffer issues. We read from File blob on demand.
 const pages = ref<PdfPage[]>([]);
 const isProcessing = ref(false);
+const useSafeMode = ref(false); // New: Safe Mode Toggle
 
 const handleFileSelected = async (files: File[]) => {
   if (files.length === 0) return;
@@ -37,13 +38,11 @@ const handleFileSelected = async (files: File[]) => {
 
   try {
     const buffer = await file.arrayBuffer();
-    currentBuffer.value = buffer;
     
     const pdfDoc = await getDocumentProxy(buffer);
     const numPages = pdfDoc.numPages;
 
-    // Render thumbnails in chunks to avoid blocking UI too much
-    // We'll do sequential rendering for now.
+    // Render thumbnails
     const newPages: PdfPage[] = [];
     for (let i = 0; i < numPages; i++) {
       const thumb = await renderPageFromProxy(pdfDoc, i, 0.3); // low scale for thumbnail
@@ -59,7 +58,6 @@ const handleFileSelected = async (files: File[]) => {
     console.error('Error loading PDF', error);
     alert('Could not load PDF. It might be encrypted or corrupted.');
     currentFile.value = null;
-    currentBuffer.value = null;
   } finally {
     isProcessing.value = false;
     store.setLoading(false);
@@ -80,31 +78,49 @@ const invertSelection = () => pages.value.forEach(p => p.selected = !p.selected)
 const handleSplit = async () => {
   const selectedIndices = pages.value.filter(p => p.selected).map(p => p.index);
   
-  if (selectedIndices.length === 0 || !currentBuffer.value) return;
+  if (selectedIndices.length === 0 || !currentFile.value) return;
 
   isProcessing.value = true;
   store.setLoading(true);
 
   try {
-    // Call worker
-    // Note: arrayBuffer might be detached if transferred previously. 
-    // In our implementation, we copy buffer if we need it multiple times or manage it carefully.
-    // Since we might split multiple times from same source, let's ensure we send a copy if we want to keep source.
-    // But our worker logic implementation currently assumes valid buffer.
-    
-    // Wait, in `usePdfWorker` we transferred the buffer if it was SPLIT_PDF.
-    // If we transfer `currentBuffer.value`, it becomes unusable for subsequent splits.
-    // We should send a copy.
-    const bufferCopy = currentBuffer.value.slice(0);
+    let resultPdf: Uint8Array;
 
-    const resultPdf = await splitPdf(bufferCopy, selectedIndices);
+    // Always read a FRESH buffer from the file blob. 
+    // This ensures we own the buffer and it's not detached from previous ops.
+    const buffer = await currentFile.value.arrayBuffer();
+
+    if (useSafeMode.value) {
+      // SAFE MODE: Render pages to images -> PDF
+      // We load the document ONCE using a copy of the buffer (implicitly safe as getDocument usually clones/transfers)
+      const pdfDoc = await getDocumentProxy(buffer);
+      
+      const imageBuffers: ArrayBuffer[] = [];
+      
+      for (const pageIndex of selectedIndices) {
+        // Render using the existing proxy. No need to pass buffer again.
+        const imgBuffer = await renderPageFromProxyToBuffer(pdfDoc, pageIndex, 2.0);
+        imageBuffers.push(imgBuffer);
+      }
+      
+      // Note: We don't need to destroy pdfDoc explicitly as GC handles it, 
+      // but pdfDoc.destroy() is good practice if available (pdf.js v2+ usually has it).
+      if (pdfDoc.destroy) pdfDoc.destroy();
+
+      resultPdf = await imagesToPdf(imageBuffers);
+
+    } else {
+      // STANDARD MODE: Binary copy
+      // Pass the fresh buffer directly.
+      resultPdf = await splitPdf(buffer, selectedIndices);
+    }
 
     // Download
     const blob = new Blob([resultPdf as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${currentFile.value?.name.replace('.pdf', '')}_extracted.pdf`;
+    link.download = `${currentFile.value?.name.replace('.pdf', '')}_extracted${useSafeMode.value ? '_safe' : ''}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -112,7 +128,12 @@ const handleSplit = async () => {
 
   } catch (error) {
     console.error('Split failed', error);
-    alert('Failed to extract pages.');
+    if (!useSafeMode.value) {
+        alert('Standard extraction failed. Try enabling "Safe Mode" to fix blank pages or errors.');
+        useSafeMode.value = true;
+    } else {
+        alert('Failed to extract pages even in Safe Mode. Error: ' + (error as any).message);
+    }
   } finally {
     isProcessing.value = false;
     store.setLoading(false);
@@ -121,7 +142,6 @@ const handleSplit = async () => {
 
 const reset = () => {
   currentFile.value = null;
-  currentBuffer.value = null;
   pages.value = [];
 };
 </script>
@@ -161,10 +181,18 @@ const reset = () => {
       </div>
 
       <!-- Controls -->
-      <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
-        <button @click="selectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Select All</button>
-        <button @click="deselectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Deselect All</button>
-        <button @click="invertSelection" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Invert</button>
+      <div class="flex flex-wrap items-center gap-4 justify-between">
+        <div class="flex gap-2">
+            <button @click="selectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Select All</button>
+            <button @click="deselectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Deselect All</button>
+            <button @click="invertSelection" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Invert</button>
+        </div>
+        
+        <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded border border-yellow-200 dark:border-yellow-700/50">
+            <input type="checkbox" v-model="useSafeMode" class="rounded text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
+            <span class="font-medium">Safe Mode</span>
+            <span class="text-xs opacity-80 hidden sm:inline">(Fixes blank pages / errors)</span>
+        </label>
       </div>
 
       <!-- Grid -->
