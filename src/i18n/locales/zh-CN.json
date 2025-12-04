@@ -1,0 +1,62 @@
+{
+  "common": {
+    "pdfTools": "PDF 工具",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "invert": "反选",
+    "clearAll": "清空全部",
+    "changeFile": "更换文件",
+    "pages": "页",
+    "detected": "已检测"
+  },
+  "home": {
+    "title": "客户端 PDF 工具",
+    "description": "在您的浏览器中安全、本地、快速地处理 PDF。",
+    "splitPdf": "分割 PDF",
+    "splitDescription": "从 PDF 文档中提取页面。",
+    "mergePdfs": "合并 PDF",
+    "mergeDescription": "将多个 PDF 合并为一个。",
+    "imagesToPdf": "图片转 PDF",
+    "imagesToPdfDescription": "将图片转换为 PDF 文档。"
+  },
+  "split": {
+    "title": "分割 PDF",
+    "description": "从 PDF 中提取特定页面。",
+    "uploadLabel": "上传 PDF 文件以分割",
+    "safeMode": "安全模式",
+    "safeModeHint": "（修复空白页或错误）",
+    "extractButton": "提取 {{count}} 页",
+    "processing": "处理中...",
+    "uploadPdfPrompt": "请选择有效的 PDF 文件。",
+    "standardModeFailed": "标准提取失败。尝试启用\\\"安全模式\\\"来修复空白页或错误。",
+    "safeModeAlsoFailed": "即使在安全模式下也提取失败。错误：{{error}}",
+    "extractionError": "分割失败",
+    "uploadPdfError": "无法加载 PDF。它可能被加密或已损坏。"
+  },
+  "merge": {
+    "title": "合并 PDF",
+    "description": "将多个 PDF 文件组合为一个文档。",
+    "uploadLabel": "在此放置 PDF",
+    "uploadDescription": "拖放多个 PDF 文件或点击浏览",
+    "mergeButton": "合并 PDF",
+    "processing": "处理中...",
+    "mergeError": "无法合并 PDF。详细信息请查看控制台。",
+    "skipError": "跳过 {{filename}}：不是 PDF 文件"
+  },
+  "imagesToPdf": {
+    "title": "图片转 PDF",
+    "description": "将多张图片转换和组合为一个 PDF。",
+    "uploadLabel": "在此放置图片",
+    "uploadDescription": "支持 JPG、PNG、WEBP 格式",
+    "images": "图片",
+    "convertButton": "转换为 PDF",
+    "processing": "转换中...",
+    "conversionError": "无法将图片转换为 PDF。",
+    "skipError": "跳过 {{filename}}：不是图片"
+  },
+  "fileUploader": {
+    "dropLabel": "在此放置文件",
+    "clickLabel": "点击上传或拖放文件",
+    "supportedFormats": "支持格式：{{formats}}"
+  }
+}

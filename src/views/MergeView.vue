@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { FileText, X, GripVertical, Download } from 'lucide-vue-next';
 import FileUploader from '@/components/FileUploader.vue';
 import { usePdfWorker } from '@/composables/usePdfWorker';
 import { useAppStore } from '@/stores/app';
+import { messages } from '@/i18n';
 
 interface PdfFile {
   id: string;
@@ -15,6 +16,7 @@ interface PdfFile {
 }
 
 const store = useAppStore();
+const t = computed(() => messages[store.currentLanguage]);
 const { mergePdfs } = usePdfWorker();
 
 const files = ref<PdfFile[]>([]);
@@ -30,7 +32,7 @@ const handleFilesSelected = async (selectedFiles: File[]) => {
         size: file.size
       });
     } else {
-      alert(`Skipped ${file.name}: Not a PDF file`);
+      alert(t.value.merge.skipError.replace('{{filename}}', file.name));
     }
   }
 };
@@ -77,7 +79,7 @@ const handleMerge = async () => {
 
   } catch (error) {
     console.error('Merge failed', error);
-    alert('Failed to merge PDFs. See console for details.');
+    alert(t.value.merge.mergeError);
   } finally {
     isProcessing.value = false;
     store.setLoading(false);
@@ -88,26 +90,26 @@ const handleMerge = async () => {
 <template>
   <div class="space-y-8">
     <div class="text-center">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Merge PDFs</h2>
-      <p class="text-gray-500 dark:text-gray-400 mt-2">Combine multiple PDF files into one document.</p>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t.merge.title }}</h2>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">{{ t.merge.description }}</p>
     </div>
 
     <FileUploader 
       accept=".pdf" 
       :multiple="true"
-      label="Drop PDFs here"
-      description="Drag & drop multiple PDF files or click to browse"
+      :label="t.merge.uploadLabel"
+      :description="t.merge.uploadDescription"
       @files-selected="handleFilesSelected"
     />
 
     <div v-if="files.length > 0" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Files to Merge ({{ files.length }})</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.merge.title }} ({{ files.length }})</h3>
         <button 
           @click="files = []" 
           class="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
         >
-          Clear All
+          {{ t.common.clearAll }}
         </button>
       </div>
 
@@ -154,7 +156,7 @@ const handleMerge = async () => {
         >
           <Download v-if="!isProcessing" class="w-5 h-5" />
           <span v-if="isProcessing" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
-          {{ isProcessing ? 'Merging...' : 'Merge PDFs' }}
+          {{ isProcessing ? t.merge.processing : t.merge.mergeButton }}
         </button>
       </div>
     </div>

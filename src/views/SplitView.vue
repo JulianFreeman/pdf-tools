@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
+import { ref, onUnmounted, computed } from 'vue';
 import { FileText, Check, Download, RotateCw } from 'lucide-vue-next';
 import FileUploader from '@/components/FileUploader.vue';
 import { usePdfRenderer } from '@/composables/usePdfRenderer';
 import { usePdfWorker } from '@/composables/usePdfWorker';
 import { useAppStore } from '@/stores/app';
+import { messages } from '@/i18n';
 
 interface PdfPage {
   index: number;
@@ -13,6 +14,7 @@ interface PdfPage {
 }
 
 const store = useAppStore();
+const t = computed(() => messages[store.currentLanguage]);
 const { getDocumentProxy, renderPageFromProxy, renderPageFromProxyToBuffer } = usePdfRenderer();
 const { splitPdf, imagesToPdf } = usePdfWorker();
 
@@ -28,7 +30,7 @@ const handleFileSelected = async (files: File[]) => {
   
   const file = files[0];
   if (!file || file.type !== 'application/pdf') {
-    alert('Please select a valid PDF file.');
+    alert(t.value.split.uploadPdfPrompt);
     return;
   }
 
@@ -58,7 +60,7 @@ const handleFileSelected = async (files: File[]) => {
 
   } catch (error) {
     console.error('Error loading PDF', error);
-    alert('Could not load PDF. It might be encrypted or corrupted.');
+    alert(t.value.split.uploadPdfError);
     currentFile.value = null;
   } finally {
     isProcessing.value = false;
@@ -105,6 +107,11 @@ const handlePageClick = (index: number, event: MouseEvent) => {
 const selectAll = () => pages.value.forEach(p => p.selected = true);
 const deselectAll = () => pages.value.forEach(p => p.selected = false);
 const invertSelection = () => pages.value.forEach(p => p.selected = !p.selected);
+
+const extractButtonText = computed(() => {
+  const count = pages.value.filter(p => p.selected).length;
+  return t.value.split.extractButton.replace('{{count}}', count.toString());
+});
 
 const handleSplit = async () => {
   const selectedIndices = pages.value.filter(p => p.selected).map(p => p.index);
@@ -160,10 +167,10 @@ const handleSplit = async () => {
   } catch (error) {
     console.error('Split failed', error);
     if (!useSafeMode.value) {
-        alert('Standard extraction failed. Try enabling "Safe Mode" to fix blank pages or errors.');
+        alert(t.value.split.standardModeFailed);
         useSafeMode.value = true;
     } else {
-        alert('Failed to extract pages even in Safe Mode. Error: ' + (error as any).message);
+        alert(t.value.split.safeModeAlsoFailed.replace('{{error}}', (error as any).message));
     }
   } finally {
     isProcessing.value = false;
@@ -180,15 +187,15 @@ const reset = () => {
 <template>
   <div class="space-y-8">
     <div class="text-center">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Split PDF</h2>
-      <p class="text-gray-500 dark:text-gray-400 mt-2">Extract specific pages from your PDF.</p>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t.split.title }}</h2>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">{{ t.split.description }}</p>
     </div>
 
     <div v-if="!currentFile">
       <FileUploader 
         accept=".pdf" 
         :multiple="false"
-        label="Upload PDF to Split"
+        :label="t.split.uploadLabel"
         @files-selected="handleFileSelected"
       />
     </div>
@@ -201,12 +208,12 @@ const reset = () => {
           </div>
           <div>
             <h3 class="font-medium text-gray-900 dark:text-white">{{ currentFile.name }}</h3>
-            <p class="text-xs text-gray-500">{{ pages.length }} pages detected</p>
+            <p class="text-xs text-gray-500">{{ pages.length }} {{ t.common.pages }} {{ t.common.detected }}</p>
           </div>
         </div>
         <div class="flex gap-2">
            <button @click="reset" class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            Change File
+            {{ t.common.changeFile }}
            </button>
         </div>
       </div>
@@ -214,15 +221,15 @@ const reset = () => {
       <!-- Controls -->
       <div class="flex flex-wrap items-center gap-4 justify-between">
         <div class="flex gap-2">
-            <button @click="selectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Select All</button>
-            <button @click="deselectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Deselect All</button>
-            <button @click="invertSelection" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">Invert</button>
+            <button @click="selectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">{{ t.common.selectAll }}</button>
+            <button @click="deselectAll" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">{{ t.common.deselectAll }}</button>
+            <button @click="invertSelection" class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">{{ t.common.invert }}</button>
         </div>
         
         <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded border border-yellow-200 dark:border-yellow-700/50">
             <input type="checkbox" v-model="useSafeMode" class="rounded text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
-            <span class="font-medium">Safe Mode</span>
-            <span class="text-xs opacity-80 hidden sm:inline">(Fixes blank pages / errors)</span>
+            <span class="font-medium">{{ t.split.safeMode }}</span>
+            <span class="text-xs opacity-80 hidden sm:inline">{{ t.split.safeModeHint }}</span>
         </label>
       </div>
 
@@ -257,7 +264,7 @@ const reset = () => {
 
             <!-- Page Number -->
             <div class="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-              Page {{ page.index + 1 }}
+              {{ t.common.pages }} {{ page.index + 1 }}
             </div>
           </div>
         </div>
@@ -272,7 +279,7 @@ const reset = () => {
             >
             <Download v-if="!isProcessing" class="w-5 h-5" />
             <span v-if="isProcessing" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
-            {{ isProcessing ? 'Processing...' : `Extract ${pages.filter(p => p.selected).length} Pages` }}
+            {{ isProcessing ? t.split.processing : extractButtonText }}
             </button>
         </div>
       </div>

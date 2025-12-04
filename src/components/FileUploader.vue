@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Upload, FileType } from 'lucide-vue-next';
 import { useDropZone } from '@vueuse/core';
+import { useAppStore } from '@/stores/app';
+import { messages } from '@/i18n';
+
+const store = useAppStore();
+const t = computed(() => messages[store.currentLanguage]);
 
 const props = defineProps<{
   accept?: string;
@@ -45,6 +50,21 @@ const handleFiles = (files: File[]) => {
 const triggerInput = () => {
   fileInputRef.value?.click();
 };
+
+const displayLabel = computed(() => {
+  if (props.label) return props.label;
+  return isOverDropZone.value 
+    ? t.value.fileUploader.dropLabel 
+    : t.value.fileUploader.clickLabel;
+});
+
+const displayDescription = computed(() => {
+  if (props.description) return props.description;
+  if (props.accept) {
+    return t.value.fileUploader.supportedFormats.replace('{{formats}}', props.accept);
+  }
+  return '';
+});
 </script>
 
 <template>
@@ -78,10 +98,10 @@ const triggerInput = () => {
       
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-          {{ props.label || (isOverDropZone ? 'Drop files here' : 'Click to upload or drag and drop') }}
+          {{ displayLabel }}
         </h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ props.description || (props.accept ? `Supported formats: ${props.accept}` : '') }}
+          {{ displayDescription }}
         </p>
       </div>
     </div>

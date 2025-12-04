@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { Image as ImageIcon, X, Download } from 'lucide-vue-next';
 import FileUploader from '@/components/FileUploader.vue';
 import { usePdfWorker } from '@/composables/usePdfWorker';
 import { useAppStore } from '@/stores/app';
+import { messages } from '@/i18n';
 
 interface ImageFile {
   id: string;
@@ -14,6 +15,7 @@ interface ImageFile {
 }
 
 const store = useAppStore();
+const t = computed(() => messages[store.currentLanguage]);
 const { imagesToPdf } = usePdfWorker();
 
 const images = ref<ImageFile[]>([]);
@@ -30,7 +32,7 @@ const handleFilesSelected = (selectedFiles: File[]) => {
         name: file.name
       });
     } else {
-      alert(`Skipped ${file.name}: Not an image`);
+      alert(t.value.imagesToPdf.skipError.replace('{{filename}}', file.name));
     }
   }
 };
@@ -73,7 +75,7 @@ const handleConvert = async () => {
 
   } catch (error) {
     console.error('Conversion failed', error);
-    alert('Failed to convert images to PDF.');
+    alert(t.value.imagesToPdf.conversionError);
   } finally {
     isProcessing.value = false;
     store.setLoading(false);
@@ -84,26 +86,26 @@ const handleConvert = async () => {
 <template>
   <div class="space-y-8">
     <div class="text-center">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Images to PDF</h2>
-      <p class="text-gray-500 dark:text-gray-400 mt-2">Convert and combine images into a single PDF.</p>
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t.imagesToPdf.title }}</h2>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">{{ t.imagesToPdf.description }}</p>
     </div>
 
     <FileUploader 
       accept="image/*" 
       :multiple="true"
-      label="Drop Images here"
-      description="Supports JPG, PNG, WEBP"
+      :label="t.imagesToPdf.uploadLabel"
+      :description="t.imagesToPdf.uploadDescription"
       @files-selected="handleFilesSelected"
     />
 
     <div v-if="images.length > 0" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Images ({{ images.length }})</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.imagesToPdf.images }} ({{ images.length }})</h3>
         <button 
           @click="images = []" 
           class="text-sm text-red-500 hover:text-red-600 dark:text-red-400"
         >
-          Clear All
+          {{ t.common.clearAll }}
         </button>
       </div>
 
@@ -141,7 +143,7 @@ const handleConvert = async () => {
         >
           <Download v-if="!isProcessing" class="w-5 h-5" />
           <span v-if="isProcessing" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
-          {{ isProcessing ? 'Converting...' : 'Convert to PDF' }}
+          {{ isProcessing ? t.imagesToPdf.processing : t.imagesToPdf.convertButton }}
         </button>
       </div>
     </div>
