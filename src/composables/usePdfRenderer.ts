@@ -10,10 +10,11 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Let's try to point to the node_modules file served by Vite during dev, 
 // or use the standard worker import pattern.
-const workerUrl = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs', 
-  import.meta.url
-).toString();
+// Using CDN for worker and assets to ensure Wasm/CMaps load correctly without complex Vite asset copying
+const PDFJS_VERSION = '5.4.449';
+const CDN_BASE = `https://unpkg.com/pdfjs-dist@${PDFJS_VERSION}`;
+
+const workerUrl = `${CDN_BASE}/build/pdf.worker.min.mjs`;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -25,7 +26,13 @@ export function usePdfRenderer() {
     scale: number = 1.0
   ): Promise<string> => {
     // Load document
-    const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: pdfData,
+      cMapUrl: `${CDN_BASE}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${CDN_BASE}/standard_fonts/`,
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS
+    });
     const pdf = await loadingTask.promise;
 
     // Get page (1-based index in pdf.js, but we usually use 0-based in logic. Adjust as needed.)
@@ -62,7 +69,13 @@ export function usePdfRenderer() {
   };
 
   const getDocumentProxy = async (pdfData: ArrayBuffer) => {
-    return await pdfjsLib.getDocument({ data: pdfData }).promise;
+    return await pdfjsLib.getDocument({ 
+      data: pdfData,
+      cMapUrl: `${CDN_BASE}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${CDN_BASE}/standard_fonts/`,
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS
+    }).promise;
   };
 
   const renderPageFromProxy = async (
