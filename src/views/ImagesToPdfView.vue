@@ -136,30 +136,54 @@ const handleConvert = async () => {
 
     <!-- Page size options -->
     <div class="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center justify-between">
-        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t.imagesToPdf.sizeModeLabel }}</div>
-      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="inline-flex rounded-md shadow-sm -space-x-px">
+          <button
+            type="button"
+            @click="sizeMode = 'original'"
+            :class="[
+              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
+              sizeMode === 'original'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600',
+              'rounded-l-md'
+            ]"
+          >
+            {{ t.imagesToPdf.sizeOriginal }}
+          </button>
+          <button
+            type="button"
+            @click="sizeMode = 'max'"
+            :class="[
+              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
+              sizeMode === 'max'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600'
+            ]"
+          >
+            {{ t.imagesToPdf.sizeMax }}
+          </button>
+          <button
+            type="button"
+            @click="sizeMode = 'custom'"
+            :class="[
+              'relative inline-flex items-center px-4 py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-purple-500',
+              sizeMode === 'custom'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600 dark:hover:bg-gray-600',
+              'rounded-r-md'
+            ]"
+          >
+            {{ t.imagesToPdf.sizeCustom }}
+          </button>
+        </div>
 
-      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-4">
-        <label class="flex items-center gap-2">
-          <input type="radio" v-model="sizeMode" value="original" class="form-radio" />
-          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeOriginal }}</span>
-        </label>
-
-        <label class="flex items-center gap-2">
-          <input type="radio" v-model="sizeMode" value="max" class="form-radio" />
-          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeMax }}</span>
-        </label>
-
-        <label class="flex items-center gap-2">
-          <input type="radio" v-model="sizeMode" value="custom" class="form-radio" />
-          <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ t.imagesToPdf.sizeCustom }}</span>
-        </label>
-
-        <div v-if="sizeMode === 'custom'" class="mt-3 sm:mt-0 flex items-center gap-4">
-          <div class="flex items-center gap-2">
+        <template v-if="sizeMode === 'custom'">
+          <div class="flex items-center gap-4">
             <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.sizePresetLabel }}</label>
-            <select v-model="preset" @change="applyPreset(preset)" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">
+            <select v-model="preset" @change="applyPreset(preset)" 
+              class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
+                     focus:outline-none focus:ring-2 focus:ring-purple-500" >
               <option value="none">{{ t.imagesToPdf.presetNone || 'None' }}</option>
               <option value="A4">A4</option>
               <option value="A3">A3</option>
@@ -167,17 +191,26 @@ const handleConvert = async () => {
             </select>
           </div>
 
-          <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
-            <input type="number" v-model.number="customWidthPx" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-            <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
-            <input type="number" v-model.number="customHeightPx" min="1" class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-            <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customWidthLabel }}</label>
+              <input type="number" v-model.number="customWidthPx" min="1" 
+                class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
+                       focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-600 dark:text-gray-300">{{ t.imagesToPdf.customHeightLabel }}</label>
+              <input type="number" v-model.number="customHeightPx" min="1" 
+                class="w-24 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300
+                       focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <span class="text-xs text-gray-500 dark:text-gray-400">px</span>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
-
+    
     <div v-if="images.length > 0" class="space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.imagesToPdf.images }} ({{ images.length }})</h3>
