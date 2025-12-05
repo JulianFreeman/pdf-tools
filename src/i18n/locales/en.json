@@ -41,6 +41,10 @@
     "mergeButton": "Merge PDFs",
     "processing": "Processing...",
     "mergeError": "Failed to merge PDFs. See console for details.",
+    "standardModeFailed": "Standard merge failed. Try enabling \"Safe Mode\" to fix blank pages or errors.",
+    "safeModeAlsoFailed": "Failed to merge even in Safe Mode. Error: {{error}}",
+    "safeMode": "Safe Mode",
+    "safeModeHint": "(Fixes blank pages / errors)",
     "skipError": "Skipped {{filename}}: Not a PDF file"
   },
   "imagesToPdf": {

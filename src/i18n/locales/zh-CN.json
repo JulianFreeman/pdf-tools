@@ -41,6 +41,10 @@
     "mergeButton": "合并 PDF",
     "processing": "处理中...",
     "mergeError": "无法合并 PDF。详细信息请查看控制台。",
+    "standardModeFailed": "标准合并失败。尝试启用\"安全模式\"来修复空白页或错误。",
+    "safeModeAlsoFailed": "即使在安全模式下也合并失败。错误：{{error}}",
+    "safeMode": "安全模式",
+    "safeModeHint": "（修复空白页或错误）",
     "skipError": "跳过 {{filename}}：不是 PDF 文件"
   },
   "imagesToPdf": {

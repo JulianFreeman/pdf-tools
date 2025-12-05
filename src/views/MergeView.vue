@@ -4,6 +4,7 @@ import { VueDraggable } from 'vue-draggable-plus';
 import { FileText, X, GripVertical, Download } from 'lucide-vue-next';
 import FileUploader from '@/components/FileUploader.vue';
 import { usePdfWorker } from '@/composables/usePdfWorker';
+import { usePdfRenderer } from '@/composables/usePdfRenderer';
 import { useAppStore } from '@/stores/app';
 import { messages } from '@/i18n';
 
@@ -17,10 +18,12 @@ interface PdfFile {
 
 const store = useAppStore();
 const t = computed(() => messages[store.currentLanguage]);
-const { mergePdfs } = usePdfWorker();
+const { mergePdfs, imagesToPdf } = usePdfWorker();
+const { getDocumentProxy, renderPageFromProxyToBuffer } = usePdfRenderer();
 
 const files = ref<PdfFile[]>([]);
 const isProcessing = ref(false);
+const useSafeMode = ref(false);
 
 const handleFilesSelected = async (selectedFiles: File[]) => {
   for (const file of selectedFiles) {
@@ -56,22 +59,44 @@ const handleMerge = async () => {
   store.setLoading(true);
 
   try {
-    // Convert files to ArrayBuffers
-    const buffers: ArrayBuffer[] = [];
-    for (const pdf of files.value) {
-      const buffer = await pdf.file.arrayBuffer();
-      buffers.push(buffer);
-    }
+    let resultPdf: Uint8Array;
 
-    // Send to worker
-    const resultPdf = await mergePdfs(buffers);
+    if (useSafeMode.value) {
+      // Safe Mode: Render all pages to images -> PDF
+      const allImageBuffers: ArrayBuffer[] = [];
+
+      for (const pdf of files.value) {
+        const buffer = await pdf.file.arrayBuffer();
+        const pdfDoc = await getDocumentProxy(buffer);
+        const numPages = pdfDoc.numPages;
+
+        for (let i = 0; i < numPages; i++) {
+          // Render at good quality (scale 2.0)
+          const imgBuffer = await renderPageFromProxyToBuffer(pdfDoc, i, 2.0);
+          allImageBuffers.push(imgBuffer);
+        }
+
+        if (pdfDoc.destroy) pdfDoc.destroy();
+      }
+
+      resultPdf = await imagesToPdf(allImageBuffers, { mode: 'original' });
+
+    } else {
+      // Standard Mode
+      const buffers: ArrayBuffer[] = [];
+      for (const pdf of files.value) {
+        const buffer = await pdf.file.arrayBuffer();
+        buffers.push(buffer);
+      }
+      resultPdf = await mergePdfs(buffers);
+    }
 
     // Download
     const blob = new Blob([resultPdf as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `merged_${new Date().toISOString().slice(0,10)}.pdf`;
+    link.download = `merged_${new Date().toISOString().slice(0,10)}${useSafeMode.value ? '_safe' : ''}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -79,7 +104,12 @@ const handleMerge = async () => {
 
   } catch (error) {
     console.error('Merge failed', error);
-    alert(t.value.merge.mergeError);
+    if (!useSafeMode.value) {
+        alert(t.value.merge.standardModeFailed);
+        useSafeMode.value = true;
+    } else {
+        alert(t.value.merge.safeModeAlsoFailed.replace('{{error}}', (error as any).message));
+    }
   } finally {
     isProcessing.value = false;
     store.setLoading(false);
@@ -103,14 +133,23 @@ const handleMerge = async () => {
     />
 
     <div v-if="files.length > 0" class="space-y-4">
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t.merge.title }} ({{ files.length }})</h3>
-        <button 
-          @click="files = []" 
-          class="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-        >
-          {{ t.common.clearAll }}
-        </button>
+        
+        <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded border border-yellow-200 dark:border-yellow-700/50">
+                <input type="checkbox" v-model="useSafeMode" class="rounded text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
+                <span class="font-medium">{{ t.merge.safeMode }}</span>
+                <span class="text-xs opacity-80 hidden sm:inline">{{ t.merge.safeModeHint }}</span>
+            </label>
+
+            <button 
+            @click="files = []" 
+            class="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 px-2 py-1"
+            >
+            {{ t.common.clearAll }}
+            </button>
+        </div>
       </div>
 
       <VueDraggable
